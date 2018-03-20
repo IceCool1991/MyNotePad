@@ -1,18 +1,20 @@
 
-import java.awt.Frame;
+import java.awt.event.ActionEvent;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.*;
+import javax.swing.event.UndoableEditEvent;
+import javax.swing.event.UndoableEditListener;
+import javax.swing.text.Document;
+import javax.swing.undo.CannotRedoException;
+import javax.swing.undo.CannotUndoException;
+import javax.swing.undo.UndoManager;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -29,7 +31,8 @@ public class MainFrame extends javax.swing.JFrame {
     private int selection;
     private File file;
     private boolean wasSaved;
-    private boolean unsavedChanges;
+    private UndoManager undo;
+    private Document doc;
 
     /**
      * Creates new form MainFrame
@@ -38,15 +41,20 @@ public class MainFrame extends javax.swing.JFrame {
         initComponents();
         fileChooser = new JFileChooser();
         wasSaved = false;
-        unsavedChanges = false;
+        undo = new UndoManager();
+        doc = textArea.getDocument();
+        doc.addUndoableEditListener(new UndoableEditListener() {
+            public void undoableEditHappened(UndoableEditEvent evt) {
+                undo.addEdit(evt.getEdit());
+            }
+        });
     }
 
     public void openFile() {
         selection = fileChooser.showOpenDialog(textArea);
         if (selection == JFileChooser.APPROVE_OPTION) {
             file = fileChooser.getSelectedFile();
-            try {
-                BufferedReader reader = new BufferedReader(new FileReader(file));
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
                 String linea = reader.readLine();
                 while (linea != null) {
                     // Aquí lo que tengamos que hacer con la línea puede ser esto
@@ -54,7 +62,6 @@ public class MainFrame extends javax.swing.JFrame {
                     textArea.append(System.getProperty("line.separator"));
                     linea = reader.readLine();
                 }
-                reader.close();
             } catch (FileNotFoundException ex) {
                 Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
             } catch (IOException ex) {
@@ -97,6 +104,7 @@ public class MainFrame extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        jSeparator1 = new javax.swing.JSeparator();
         jToolBar1 = new javax.swing.JToolBar();
         openBtn = new javax.swing.JButton();
         saveBtn = new javax.swing.JButton();
@@ -111,8 +119,10 @@ public class MainFrame extends javax.swing.JFrame {
         saveAsMenuBtn = new javax.swing.JMenuItem();
         exitMenuBtn = new javax.swing.JMenuItem();
         jMenu2 = new javax.swing.JMenu();
-        jMenuItem5 = new javax.swing.JMenuItem();
-        jMenuItem6 = new javax.swing.JMenuItem();
+        jMenuItem1 = new javax.swing.JMenuItem();
+        jSeparator2 = new javax.swing.JPopupMenu.Separator();
+        undoBtn = new javax.swing.JMenuItem();
+        redoBtn = new javax.swing.JMenuItem();
         jMenu3 = new javax.swing.JMenu();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
@@ -195,11 +205,25 @@ public class MainFrame extends javax.swing.JFrame {
 
         jMenu2.setText("Edit");
 
-        jMenuItem5.setText("jMenuItem5");
-        jMenu2.add(jMenuItem5);
+        jMenuItem1.setText("Search...");
+        jMenu2.add(jMenuItem1);
+        jMenu2.add(jSeparator2);
 
-        jMenuItem6.setText("jMenuItem6");
-        jMenu2.add(jMenuItem6);
+        undoBtn.setText("Undo...");
+        undoBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                undoBtnActionPerformed(evt);
+            }
+        });
+        jMenu2.add(undoBtn);
+
+        redoBtn.setText("Redo...");
+        redoBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                redoBtnActionPerformed(evt);
+            }
+        });
+        jMenu2.add(redoBtn);
 
         jMenuBar1.add(jMenu2);
 
@@ -233,7 +257,17 @@ public class MainFrame extends javax.swing.JFrame {
 
     private void newMenuBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newMenuBtnActionPerformed
         if (textArea.getText().length() > 0) {
+            int confirmation = JOptionPane.showConfirmDialog(null,
+                    "Save current file before?", "Confirmation",
+                    JOptionPane.YES_NO_CANCEL_OPTION);
 
+            if (confirmation == JOptionPane.YES_OPTION) {
+                saveFile();
+                textArea.setText("");
+            }
+            if (confirmation == JOptionPane.NO_OPTION) {
+                textArea.setText("");
+            }
         }
     }//GEN-LAST:event_newMenuBtnActionPerformed
 
@@ -254,11 +288,15 @@ public class MainFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_saveAsMenuBtnActionPerformed
 
     private void exitMenuBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuBtnActionPerformed
-        int confirmed = JOptionPane.showConfirmDialog(null,
-                "Are you sure you want to exit the program?", "Exit Program Message Box",
-                JOptionPane.YES_NO_OPTION);
+        int confirmation = JOptionPane.showConfirmDialog(null,
+                "Save before exit?", "Exit Program Message Box",
+                JOptionPane.YES_NO_CANCEL_OPTION);
 
-        if (confirmed == JOptionPane.YES_OPTION) {
+        if (confirmation == JOptionPane.YES_OPTION) {
+            saveFile();
+            dispose();
+        }
+        if (confirmation == JOptionPane.NO_OPTION) {
             dispose();
         }
     }//GEN-LAST:event_exitMenuBtnActionPerformed
@@ -270,6 +308,24 @@ public class MainFrame extends javax.swing.JFrame {
     private void saveBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveBtnActionPerformed
         saveFile();
     }//GEN-LAST:event_saveBtnActionPerformed
+
+    private void undoBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_undoBtnActionPerformed
+        try {
+            if (undo.canUndo()) {
+                undo.undo();
+            }
+        } catch (CannotUndoException e) {
+        }
+    }//GEN-LAST:event_undoBtnActionPerformed
+
+    private void redoBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_redoBtnActionPerformed
+        try {
+            if (undo.canRedo()) {
+                undo.redo();
+            }
+        } catch (CannotRedoException e) {
+        }
+    }//GEN-LAST:event_redoBtnActionPerformed
 
     /**
      * @param args the command line arguments
@@ -287,15 +343,11 @@ public class MainFrame extends javax.swing.JFrame {
                     break;
                 }
             }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(MainFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(MainFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(MainFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | javax.swing.UnsupportedLookAndFeelException ex) {
             java.util.logging.Logger.getLogger(MainFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
+        //</editor-fold>
+
         //</editor-fold>
 
         /* Create and display the form */
@@ -313,16 +365,19 @@ public class MainFrame extends javax.swing.JFrame {
     private javax.swing.JMenu jMenu2;
     private javax.swing.JMenu jMenu3;
     private javax.swing.JMenuBar jMenuBar1;
-    private javax.swing.JMenuItem jMenuItem5;
-    private javax.swing.JMenuItem jMenuItem6;
+    private javax.swing.JMenuItem jMenuItem1;
     private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JSeparator jSeparator1;
+    private javax.swing.JPopupMenu.Separator jSeparator2;
     private javax.swing.JToolBar jToolBar1;
     private javax.swing.JMenuItem newMenuBtn;
     private javax.swing.JButton openBtn;
     private javax.swing.JMenuItem openMenuBtn;
+    private javax.swing.JMenuItem redoBtn;
     private javax.swing.JMenuItem saveAsMenuBtn;
     private javax.swing.JButton saveBtn;
     private javax.swing.JMenuItem saveMenuBtn;
     private javax.swing.JTextArea textArea;
+    private javax.swing.JMenuItem undoBtn;
     // End of variables declaration//GEN-END:variables
 }
