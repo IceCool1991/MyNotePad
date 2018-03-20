@@ -1,9 +1,16 @@
 
+import java.awt.Frame;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
@@ -18,14 +25,67 @@ import javax.swing.filechooser.FileNameExtensionFilter;
  */
 public class MainFrame extends javax.swing.JFrame {
 
-    private JPanel contentPane;
+    private JFileChooser fileChooser;
+    private int selection;
+    private File file;
+    private boolean wasSaved;
+    private boolean unsavedChanges;
 
     /**
      * Creates new form MainFrame
      */
     public MainFrame() {
         initComponents();
+        fileChooser = new JFileChooser();
+        wasSaved = false;
+        unsavedChanges = false;
+    }
 
+    public void openFile() {
+        selection = fileChooser.showOpenDialog(textArea);
+        if (selection == JFileChooser.APPROVE_OPTION) {
+            file = fileChooser.getSelectedFile();
+            try {
+                BufferedReader reader = new BufferedReader(new FileReader(file));
+                String linea = reader.readLine();
+                while (linea != null) {
+                    // Aquí lo que tengamos que hacer con la línea puede ser esto
+                    textArea.append(linea);
+                    textArea.append(System.getProperty("line.separator"));
+                    linea = reader.readLine();
+                }
+                reader.close();
+            } catch (FileNotFoundException ex) {
+                Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IOException ex) {
+                Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        wasSaved = false;
+    }
+
+    public void saveFileAs() throws IOException {
+        selection = fileChooser.showSaveDialog(textArea);
+        try (FileWriter fw = new FileWriter(fileChooser.getSelectedFile())) {
+            fw.write(textArea.getText());
+        }
+        wasSaved = true;
+    }
+
+    public void saveFile() {
+        if (!wasSaved) {
+            try {
+                saveFileAs();
+            } catch (IOException ex) {
+                Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        } else {
+            try (FileWriter fw = new FileWriter(fileChooser.getSelectedFile())) {
+                fw.write(textArea.getText());
+            } catch (IOException ex) {
+                Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
     }
 
     /**
@@ -38,16 +98,17 @@ public class MainFrame extends javax.swing.JFrame {
     private void initComponents() {
 
         jToolBar1 = new javax.swing.JToolBar();
-        jButton1 = new javax.swing.JButton();
-        jButton2 = new javax.swing.JButton();
+        openBtn = new javax.swing.JButton();
+        saveBtn = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
-        inputArea = new javax.swing.JTextArea();
+        textArea = new javax.swing.JTextArea();
         jLabel1 = new javax.swing.JLabel();
         jMenuBar1 = new javax.swing.JMenuBar();
         jMenu1 = new javax.swing.JMenu();
         newMenuBtn = new javax.swing.JMenuItem();
         openMenuBtn = new javax.swing.JMenuItem();
         saveMenuBtn = new javax.swing.JMenuItem();
+        saveAsMenuBtn = new javax.swing.JMenuItem();
         exitMenuBtn = new javax.swing.JMenuItem();
         jMenu2 = new javax.swing.JMenu();
         jMenuItem5 = new javax.swing.JMenuItem();
@@ -58,21 +119,33 @@ public class MainFrame extends javax.swing.JFrame {
 
         jToolBar1.setRollover(true);
 
-        jButton1.setText("jButton1");
-        jButton1.setFocusable(false);
-        jButton1.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        jButton1.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        jToolBar1.add(jButton1);
+        openBtn.setText("Open");
+        openBtn.setFocusable(false);
+        openBtn.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        openBtn.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        openBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                openBtnActionPerformed(evt);
+            }
+        });
+        jToolBar1.add(openBtn);
 
-        jButton2.setText("jButton2");
-        jButton2.setFocusable(false);
-        jButton2.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        jButton2.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        jToolBar1.add(jButton2);
+        saveBtn.setText("Save");
+        saveBtn.setFocusable(false);
+        saveBtn.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        saveBtn.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        saveBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                saveBtnActionPerformed(evt);
+            }
+        });
+        jToolBar1.add(saveBtn);
 
-        inputArea.setColumns(20);
-        inputArea.setRows(5);
-        jScrollPane1.setViewportView(inputArea);
+        textArea.setColumns(20);
+        textArea.setLineWrap(true);
+        textArea.setRows(5);
+        textArea.setWrapStyleWord(true);
+        jScrollPane1.setViewportView(textArea);
 
         jLabel1.setText("jLabel1");
 
@@ -95,9 +168,27 @@ public class MainFrame extends javax.swing.JFrame {
         jMenu1.add(openMenuBtn);
 
         saveMenuBtn.setText("Save");
+        saveMenuBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                saveMenuBtnActionPerformed(evt);
+            }
+        });
         jMenu1.add(saveMenuBtn);
 
+        saveAsMenuBtn.setText("Save as...");
+        saveAsMenuBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                saveAsMenuBtnActionPerformed(evt);
+            }
+        });
+        jMenu1.add(saveAsMenuBtn);
+
         exitMenuBtn.setText("Exit");
+        exitMenuBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                exitMenuBtnActionPerformed(evt);
+            }
+        });
         jMenu1.add(exitMenuBtn);
 
         jMenuBar1.add(jMenu1);
@@ -141,45 +232,44 @@ public class MainFrame extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void newMenuBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newMenuBtnActionPerformed
+        if (textArea.getText().length() > 0) {
 
-        // TODO add your handling code here:
+        }
     }//GEN-LAST:event_newMenuBtnActionPerformed
 
     private void openMenuBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openMenuBtnActionPerformed
-        contentPane = new JPanel();
-        contentPane.setLayout(null);
-        setContentPane(contentPane);
-        //Creamos el objeto JFileChooser
-        JFileChooser fc = new JFileChooser();
-
-        //Indicamos lo que podemos seleccionar
-        fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
-
-        //Creamos el filtro
-        FileNameExtensionFilter filtro = new FileNameExtensionFilter("*.TXT", "txt");
-
-        //Le indicamos el filtro
-        fc.setFileFilter(filtro);
-
-        //Abrimos la ventana, guardamos la opcion seleccionada por el usuario
-        int seleccion = fc.showOpenDialog(contentPane);
-
-        //Si el usuario, pincha en aceptar
-        if (seleccion == JFileChooser.APPROVE_OPTION) {
-
-            //Seleccionamos el fichero
-            File file = fc.getSelectedFile();
-
-            try (FileReader fr = new FileReader(file)) {
-                BufferedReader input = new BufferedReader(fr);
-                String cadena = "";
-                while ((cadena = input.readLine())!=null) {
-                    inputArea.setText(cadena);
-                }
-            } catch (IOException e1) {
-            }
-        }
+        openFile();
     }//GEN-LAST:event_openMenuBtnActionPerformed
+
+    private void saveMenuBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveMenuBtnActionPerformed
+        saveFile();
+    }//GEN-LAST:event_saveMenuBtnActionPerformed
+
+    private void saveAsMenuBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveAsMenuBtnActionPerformed
+        try {
+            saveFileAs();
+        } catch (IOException ex) {
+            Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }//GEN-LAST:event_saveAsMenuBtnActionPerformed
+
+    private void exitMenuBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuBtnActionPerformed
+        int confirmed = JOptionPane.showConfirmDialog(null,
+                "Are you sure you want to exit the program?", "Exit Program Message Box",
+                JOptionPane.YES_NO_OPTION);
+
+        if (confirmed == JOptionPane.YES_OPTION) {
+            dispose();
+        }
+    }//GEN-LAST:event_exitMenuBtnActionPerformed
+
+    private void openBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openBtnActionPerformed
+        openFile();
+    }//GEN-LAST:event_openBtnActionPerformed
+
+    private void saveBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveBtnActionPerformed
+        saveFile();
+    }//GEN-LAST:event_saveBtnActionPerformed
 
     /**
      * @param args the command line arguments
@@ -218,9 +308,6 @@ public class MainFrame extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuItem exitMenuBtn;
-    private javax.swing.JTextArea inputArea;
-    private javax.swing.JButton jButton1;
-    private javax.swing.JButton jButton2;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JMenu jMenu1;
     private javax.swing.JMenu jMenu2;
@@ -231,7 +318,11 @@ public class MainFrame extends javax.swing.JFrame {
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JToolBar jToolBar1;
     private javax.swing.JMenuItem newMenuBtn;
+    private javax.swing.JButton openBtn;
     private javax.swing.JMenuItem openMenuBtn;
+    private javax.swing.JMenuItem saveAsMenuBtn;
+    private javax.swing.JButton saveBtn;
     private javax.swing.JMenuItem saveMenuBtn;
+    private javax.swing.JTextArea textArea;
     // End of variables declaration//GEN-END:variables
 }
